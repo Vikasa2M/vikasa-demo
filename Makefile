@@ -1,4 +1,8 @@
-INFRA_DIR  ?= ../../vikasa-infra
+# Topology renderer. Defaults to the in-repo vendored copy (third_party/
+# vikasa-infra) so a fresh clone renders NATS/stream configs with no sibling
+# checkout — see docs/MODELS-PIN.md. Override INFRA_DIR to point at a live
+# github.com/Vikasa2M/vikasa-infra checkout when iterating on the renderer.
+INFRA_DIR  ?= third_party/vikasa-infra
 # Pinned to openits-models@75f1fdb pending signal-control cut-3a stabilization;
 # see docs/MODELS-PIN.md.
 MODELS_DIR ?= ../../openits-models-pinned
@@ -42,12 +46,12 @@ topology: gen-compose
 	  -cabinets $(CURDIR)/deploy/topology/inventories/scdot-cabinets.json \
 	  -out $(CURDIR)/deploy/topology/rendered/scdot
 
-# Build context is the parent dir of both repos (not this repo root): go.mod's
-# `replace github.com/openits/openits-models => ../../openits-models-pinned`
-# needs the sibling checkout present in the build context to resolve. See
-# Dockerfile and docs/MODELS-PIN.md.
+# Self-contained: the build context is this repo root. The image builds in
+# vendor mode (`-mod=vendor`) against the committed vendor/ tree, which
+# already contains the pinned openits-models packages, so no sibling checkout
+# is needed in the build context. See Dockerfile and docs/MODELS-PIN.md.
 docker-build:
-	cd ../.. && docker build -f vikasa/vikasa-demo/Dockerfile -t $(IMAGE) .
+	docker build -f Dockerfile -t $(IMAGE) .
 
 # Brings up infra + the four-tier NATS chain, renders topology, applies the
 # rendered stream configs (stream-init-gdot), applies ClickHouse migrations +
@@ -91,7 +95,7 @@ demo-down:
 demo: docker-build gen-compose topology
 	sh scripts/demo-up.sh
 
-# Unattended rehearsal / take-QA: runs all 5 tour phases against the live
+# Unattended rehearsal / take-QA: runs all 6 tour phases against the live
 # stack started by `make demo`, asserting each phase's expected outcome and
 # exiting nonzero if any phase fails. Run this before recording a take —
 # see docs/RUNBOOK.md's recording checklist.

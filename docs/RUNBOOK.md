@@ -27,12 +27,13 @@ unaffected — it never runs the AI phases unless `--ai` is passed).
   — a single `up -d --wait` over that many containers disconnects the Docker
   Desktop daemon; the batched bring-up is reliable.
 - Go (see `go.mod` for the pinned version).
-- Two sibling checkouts next to this repo (i.e. `../../<repo>` relative to
-  `vikasa-demo/`):
-  - `../../openits-models-pinned` — a pinned clone of `openits-models` (see
-    `docs/MODELS-PIN.md`). `go.mod`'s `replace` directive points here.
-  - `../../vikasa-infra` — used by `make topology` to render NATS/stream
-    configs from `deploy/topology/specs/*.json`.
+- **No sibling checkouts are required.** The base demo is self-contained: the
+  pinned `openits-models` packages are committed under `vendor/` (the Go and
+  Docker builds both run in vendor mode), and the topology renderer is
+  vendored under `third_party/vikasa-infra/` so `make topology` renders
+  offline (see `docs/MODELS-PIN.md`). The only step that still reaches for a
+  sibling is the optional AI segment's `make ai-models-pack`, which reads
+  `../../openits-models-pinned` via `MODELS_DIR` to regenerate the YANG pack.
 - Ports `3000`, `8123`, `9000`, `9090`, and `18081`–`18084` free on
   localhost.
 
@@ -212,7 +213,7 @@ invocation).
 | 5 | corridor | Corridor I-85, Perception & Fusion | A perception incident on the I-85 corridor cabinet crosses the DMZ into the shared federation view | Incident + DMS advisory appear in the corridor/federation view; only corridor cabinets ever show there (auto-clears ~2min) |
 | 6 | reversible | I-75 South Reversible Express Lanes | GDOT's I-75 South express lanes reverse on a schedule — northbound for the AM peak, southbound for the PM | The direction tile flips through an in-transition sweep; the reversal timeline bands blue/orange; every segment-map marker flips color together |
 
-## AI segment ("the model is all you need" — Task 19)
+## AI segment ("the model is all you need")
 
 Additional phases (`ai-build`, `ai-qa`) after the base six, gated behind `democtl tour --ai`.
 Unlike phases 1-5, these are presenter-driven **in every mode** — the
@@ -274,15 +275,13 @@ it again. Don't narrate over a failing gate.
    window — read the AI's answer against these live, on camera, before
    moving to Q2-Q5. Press Enter once the Q&A beat is done.
 7. `democtl ai-reset` after the take is in the can, so the folder is clean
-   for the next session (or the local-model re-record — see the plan's
-   stretch phases).
+   for the next session (or before a local-model re-record).
 
 ### Rehearsing without recording
 
 `democtl tour --ai --only ai-build` runs just phase 6 (useful for
 rehearsing the take-QA gate against a dashboard you already built by hand,
-or checking `verify ai-dashboard` end to end — see this task's report for
-the exact pass-then-fail sequence used to prove it). `--only ai-qa` runs
+or checking `verify ai-dashboard` end to end). `--only ai-qa` runs
 just phase 7's narration + ground truth without touching Grafana at all.
 
 ## Teardown
@@ -323,9 +322,9 @@ compose ... down -v`). The next `make demo` starts completely fresh
   cut/restore cycle, check the underlying data directly, e.g.:
   `curl -s http://localhost:8123/ --data "SELECT count() FROM vikasa_gdot.events_raw WHERE ce_time > now() - INTERVAL 5 MINUTE FORMAT TSV"`.
 - **Sink falling behind (`ce_time` → `ingested_at` lag growing).** Already
-  tuned (see progress notes: batch size 8000 / 1s max-wait / ClickHouse
-  async_insert) — sustained lag should sit in the 0–20s range under full
-  9-cabinet load. If you see minutes of lag, check `docker logs
+  tuned (batch size 8000 / 1s max-wait / ClickHouse async_insert) —
+  sustained lag should sit in the 0–20s range under full-fleet load. If you
+  see minutes of lag, check `docker logs
   <dot>-sink-1` for repeated `fetched N/8000` at N≈8000 (saturated) vs.
   small N (healthy/idle).
 - **Consumer durable config mismatch on sink startup.** Self-heals: the
@@ -334,8 +333,8 @@ compose ... down -v`). The next `make demo` starts completely fresh
   resuming. No manual intervention needed; if it's still stuck after a
   minute, `docker compose ... restart <dot>-sink`.
 - **`ce_time` stuck in the past while `ingested_at` is current** (fresh
-  rows keep landing but their event-time is hours old). Seen once during
-  this task after a long-lived stack survived a host sleep/suspend — the
+  rows keep landing but their event-time is hours old). Seen once after a
+  long-lived stack survived a host sleep/suspend — the
   long-running sim processes' event timestamps stopped advancing at
   real-world pace even though the containers' own OS clock was correct.
   `verify baseline`'s `recent-events` check (which filters on `ce_time`)

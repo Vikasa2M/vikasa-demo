@@ -1,0 +1,23 @@
+# The image build only needs the Go module (go.mod/go.sum, vendor/, cmd/,
+# internal/) to `go build ./cmd/...`. Everything below is irrelevant to that
+# and only bloats the build context.
+.git
+.github
+.idea
+.playwright-mcp
+.superpowers
+.claude
+docs
+demo
+deploy
+scripts
+# third_party/vikasa-infra is the topology renderer; it runs on the host
+# during `make topology`, never inside this image.
+third_party
+*.png
+*.mp4
+*.md
+Dockerfile
+Makefile
+.dockerignore
+.gitignore

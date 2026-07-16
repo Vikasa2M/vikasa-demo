@@ -51,17 +51,39 @@ will not move even if the live `openits-models` branch keeps churning.
 replace github.com/openits/openits-models => ../../openits-models-pinned
 ```
 
-The `Dockerfile` and `Makefile` (`docker-build` target) were updated to
-copy/reference `openits-models-pinned` into the build context instead of
-`openits-models`, so the containerized build resolves the same pinned
-replace.
+## Self-contained builds — no sibling needed
 
-There is also a machine-local, untracked `~/GolandProjects/.dockerignore`
-(outside any git repo — it's a build-context allowlist, not part of this
-repo) that had to be updated to whitelist `openits-models-pinned/**` instead
-of `openits-models/**`, since `make docker-build`'s context is the
-`GolandProjects` parent directory. If you re-clone the pinned checkout on a
-fresh machine, recreate that `.dockerignore` allowlist too.
+A fresh clone does **not** need the insulated checkout to build or run the
+demo. The pinned models packages are committed under `vendor/` (`go mod
+vendor` pulls in the replaced module's packages), and every build path uses
+vendor mode:
+
+- Host `go build`/`go test` auto-select vendor mode because `vendor/` is
+  present, so they never consult the `replace` path.
+- CI sets `GOFLAGS=-mod=vendor` explicitly (see `.github/workflows/ci.yaml`).
+- `make docker-build` builds with the **repo root as the Docker context** and
+  `go build -mod=vendor` inside the image (see `Dockerfile`). It no longer
+  copies `openits-models-pinned` into the context, so there's nothing to
+  whitelist — the old machine-local `~/GolandProjects/.dockerignore` allowlist
+  is obsolete.
+
+The `replace` directive stays in `go.mod` for local, unvendored development
+against the insulated checkout (and for the deferred re-sync below), but it is
+inert under vendor mode. Regenerate and recommit `vendor/` (`go mod vendor`)
+whenever `go.mod`/`go.sum` changes or the pin moves.
+
+The one path that still reads the checkout is the optional AI segment:
+`make ai-models-pack` regenerates the (gitignored) YANG pack from
+`../../openits-models-pinned` via `MODELS_DIR`. The base demo does not.
+
+## Topology renderer — also vendored in-repo
+
+The other former sibling dependency, `github.com/Vikasa2M/vikasa-infra` (the
+NATS/stream topology renderer that `make topology` invokes), is likewise
+copied into the repo under `third_party/vikasa-infra/` as a self-contained
+nested module — see `third_party/vikasa-infra/README.md` for its provenance
+commit and refresh procedure. Both this and the models vendoring are stopgaps
+until the respective repos publish consumable GitHub releases.
 
 ## Deferred follow-up
 

@@ -1,6 +1,6 @@
 # Wiring the AI segment's MCP servers
 
-Task 19's "models-only" segment hands an external AI exactly two tools —
+The demo's "models-only" AI segment hands an external AI exactly two tools —
 a read-only ClickHouse server and a Grafana server scoped to one folder —
 plus the YANG models pack as an attached file. Both servers are official,
 upstream, third-party projects; this repo doesn't vendor or modify either
@@ -38,7 +38,7 @@ honors the old name, and MCP client versions differ in which one they
 expect. Use whichever your client's config recognizes.
 
 The token can only create/edit dashboards in the "AI Built" folder (see
-`internal/ai` and the brief) -- if the AI (or a typo in your MCP config)
+`internal/ai`) -- if the AI (or a typo in your MCP config)
 tries to touch anything else in Grafana, it gets a 403.
 
 ## 2. The Grafana server: `grafana/mcp-grafana`
@@ -137,8 +137,8 @@ you must additionally:
    re-enable it per chat.
 
 This is meaningfully more setup than the two local-client paths above and
-wasn't exercised for the recorded take (see the report for this task) --
-budget real time for it before relying on ChatGPT for a live recording.
+wasn't exercised for the recorded take -- budget real time for it before
+relying on ChatGPT for a live recording.
 
 ## A note on drift
 

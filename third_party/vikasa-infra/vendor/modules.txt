@@ -1,0 +1,18 @@
+# github.com/nats-io/jwt/v2 v2.8.2
+## explicit; go 1.25.0
+github.com/nats-io/jwt/v2
+# github.com/nats-io/nkeys v0.4.16
+## explicit; go 1.25.0
+github.com/nats-io/nkeys
+# golang.org/x/crypto v0.53.0
+## explicit; go 1.25.0
+golang.org/x/crypto/blake2b
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/internal/alias
+golang.org/x/crypto/internal/poly1305
+golang.org/x/crypto/nacl/box
+golang.org/x/crypto/nacl/secretbox
+golang.org/x/crypto/salsa20/salsa
+# golang.org/x/sys v0.46.0
+## explicit; go 1.25.0
+golang.org/x/sys/cpu

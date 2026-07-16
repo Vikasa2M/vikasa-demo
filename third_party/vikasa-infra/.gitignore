@@ -1,0 +1,2 @@
+# build output of cmd/gen when run in-place
+/gen
