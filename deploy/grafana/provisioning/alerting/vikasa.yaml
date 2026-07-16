@@ -1,0 +1,159 @@
+apiVersion: 1
+
+# "Cabinet heartbeat missing" — one rule per DOT, each against its own real
+# ClickHouse database (vikasa_gdot / vikasa_ncdot / vikasa_scdot), all
+# using the exact provisioned datasource uid clickhouse-vikasa. Each rule's
+# condition query already filters to over-threshold cabinets via
+# HAVING gap > 90; a Reduce(count) + Threshold(>0) expression pair turns
+# "the query returned any rows" into the alert condition, so the rule fires
+# whenever at least one cabinet in that DOT hasn't sent a heartbeat
+# (ingested_at) in over 90 seconds.
+groups:
+  - orgId: 1
+    name: Vikasa heartbeats
+    folder: Vikasa
+    interval: 1m
+    rules:
+      - uid: vikasa-heartbeat-missing-gdot
+        title: "Cabinet heartbeat missing — gdot"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: clickhouse-vikasa
+            model:
+              datasource:
+                type: grafana-clickhouse-datasource
+                uid: clickhouse-vikasa
+              editorType: sql
+              format: 1
+              queryType: table
+              rawSql: >-
+                SELECT cabinet_id, dateDiff('second', max(ingested_at), now64(3)) AS gap
+                FROM vikasa_gdot.heartbeats
+                GROUP BY cabinet_id
+                HAVING gap > 90
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: count
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+              refId: C
+        noDataState: OK
+        execErrState: Alerting
+        for: 2m
+        labels:
+          dot: gdot
+          severity: warning
+        annotations:
+          summary: "One or more gdot cabinets have not sent a heartbeat (ingested_at) in over 90 seconds."
+
+      - uid: vikasa-heartbeat-missing-ncdot
+        title: "Cabinet heartbeat missing — ncdot"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: clickhouse-vikasa
+            model:
+              datasource:
+                type: grafana-clickhouse-datasource
+                uid: clickhouse-vikasa
+              editorType: sql
+              format: 1
+              queryType: table
+              rawSql: >-
+                SELECT cabinet_id, dateDiff('second', max(ingested_at), now64(3)) AS gap
+                FROM vikasa_ncdot.heartbeats
+                GROUP BY cabinet_id
+                HAVING gap > 90
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: count
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+              refId: C
+        noDataState: OK
+        execErrState: Alerting
+        for: 2m
+        labels:
+          dot: ncdot
+          severity: warning
+        annotations:
+          summary: "One or more ncdot cabinets have not sent a heartbeat (ingested_at) in over 90 seconds."
+
+      - uid: vikasa-heartbeat-missing-scdot
+        title: "Cabinet heartbeat missing — scdot"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: clickhouse-vikasa
+            model:
+              datasource:
+                type: grafana-clickhouse-datasource
+                uid: clickhouse-vikasa
+              editorType: sql
+              format: 1
+              queryType: table
+              rawSql: >-
+                SELECT cabinet_id, dateDiff('second', max(ingested_at), now64(3)) AS gap
+                FROM vikasa_scdot.heartbeats
+                GROUP BY cabinet_id
+                HAVING gap > 90
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: count
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+              refId: C
+        noDataState: OK
+        execErrState: Alerting
+        for: 2m
+        labels:
+          dot: scdot
+          severity: warning
+        annotations:
+          summary: "One or more scdot cabinets have not sent a heartbeat (ingested_at) in over 90 seconds."

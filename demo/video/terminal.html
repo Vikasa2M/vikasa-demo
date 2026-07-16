@@ -1,0 +1,76 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%;background:#0b0f17;overflow:hidden;
+    font-family:"SF Mono",Menlo,Consolas,monospace;color:#cdd9e5}
+  .kick{position:fixed;top:40px;left:64px;font-size:15px;letter-spacing:.25em;
+    text-transform:uppercase;color:#6ea8fe;font-weight:700;font-family:-apple-system,Helvetica,Arial,sans-serif}
+  .khead{position:fixed;top:66px;left:64px;font-size:30px;font-weight:600;color:#e8eef7;
+    font-family:-apple-system,Helvetica,Arial,sans-serif}
+  .term{position:absolute;top:150px;left:64px;right:64px;bottom:56px;
+    background:#0d1117;border:1px solid #223;border-radius:12px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .bar{height:44px;background:#161b22;display:flex;align-items:center;padding:0 18px;
+    border-bottom:1px solid #223;font-family:-apple-system,Helvetica,Arial,sans-serif}
+  .dot{width:13px;height:13px;border-radius:50%;margin-right:9px}
+  .r{background:#ff5f56}.y{background:#ffbd2e}.g{background:#27c93f}
+  .title{margin-left:16px;color:#8b98a5;font-size:15px}
+  .body{padding:22px 26px;font-size:20px;line-height:1.55;height:calc(100% - 44px);
+    overflow:hidden;white-space:pre-wrap}
+  .u{color:#e8eef7}.mut{color:#6b7684}.tool{color:#6ea8fe}.ok{color:#3fb950}.acc{color:#d2a8ff}
+  .cur{display:inline-block;width:11px;height:22px;background:#6ea8fe;vertical-align:-4px;
+    animation:bl 1s steps(1) infinite}
+  @keyframes bl{50%{opacity:0}}
+</style></head><body>
+  <div class="kick">Act 5 &middot; The Model Builds It</div>
+  <div class="khead">Given only the data model — no schema docs, no template dashboard</div>
+  <div class="term">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">vikasa-ai &nbsp;—&nbsp; claude + ClickHouse MCP (read-only) + Grafana MCP</span></div>
+    <div class="body" id="b"></div>
+  </div>
+<script>
+const B=document.getElementById('b');
+let cur=document.createElement('span');cur.className='cur';
+function line(html,cls){const d=document.createElement('div');if(cls)d.className=cls;d.innerHTML=html;B.appendChild(d);return d;}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+const prompt =
+"Attached is our OpenITS data model (YANG). Using vikasa_federation — the corridor\n"+
+"data each DOT shares through its DMZ — build a dashboard \"Corridor Operations — AI\n"+
+"Built\": avg corridor speed per DOT, a cabinet map colored by speed, active incidents,\n"+
+"DMS advisory status, and event throughput per DOT. Explore the data first, and verify\n"+
+"every query returns rows before you add its panel.";
+
+const steps=[
+  ['tool','→ reading YANG modules … signal-control, traffic-monitoring, perception, dms'],
+  ['mut', '  events + tables are generated from these — kebab-case → snake_case'],
+  ['tool','→ ClickHouse: SHOW DATABASES'],
+  ['mut', '  vikasa_federation · vikasa_gdot · vikasa_ncdot · vikasa_scdot'],
+  ['tool','→ SHOW TABLES vikasa_federation → 11 tables'],
+  ['tool','→ SHOW CREATE corridor_speed_1m → ReplacingMergeTree (use rollup + argMax)'],
+  ['tool','→ sampling corridor_speed_1m, zone_incident, dms_state, cabinets …'],
+  ['ok',  '  ✓ avg speed by DOT       — time-series, $__timeFilter(bucket), AS time'],
+  ['ok',  '  ✓ cabinet map by speed   — geomap, joined cabinets dim for lat/lon'],
+  ['ok',  '  ✓ active incidents       — table, argMax(state, ce_time)'],
+  ['ok',  '  ✓ DMS advisory status    — table, argMax per sign'],
+  ['ok',  '  ✓ event throughput/DOT   — time-series, events/sec from events_1m'],
+  ['acc', '✓ published "Corridor Operations — AI Built" → Grafana folder "AI Built"'],
+];
+
+(async()=>{
+  // prompt line, typed
+  const p=line('<span class="mut">operator ▸ </span><span class="u"></span>');
+  const span=p.querySelector('.u'); span.appendChild(cur);
+  for(const ch of prompt){ cur.insertAdjacentText('beforebegin',ch); await sleep(11); }
+  cur.remove();
+  await sleep(500);
+  line('','mut'); // spacer
+  const think=line('<span class="acc">claude</span> <span class="mut">discovering the schema and building panels …</span>');
+  await sleep(700);
+  for(const [cls,txt] of steps){
+    line(esc(txt).replace(/✓/g,'✓'),cls);
+    await sleep(cls==='ok'?520:760);
+  }
+  const done=line('');done.appendChild(cur.cloneNode());
+})();
+</script></body></html>

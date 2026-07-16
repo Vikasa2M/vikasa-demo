@@ -1,0 +1,16 @@
+/bin/
+deploy/topology/rendered/
+deploy/compose/docker-compose.generated.yml
+deploy/compose/nats/
+deploy/compose/sims/
+deploy/topology/inventories/
+deploy/clickhouse/seed.generated.sql
+deploy/prometheus/targets.generated.json
+demo/ai/models-pack.generated.yang
+*.test
+.idea/
+.playwright-mcp/
+.DS_Store
+/vikasa-*.png
+demo/*.mp4
+/gen-compose

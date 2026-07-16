@@ -1,0 +1,611 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 6,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## Ninety-nine cabinets, three sovereign networks, one operations view.\n\nGDOT, NCDOT, and SCDOT each run ~33 cabinets \u2014 99 in all \u2014 reporting device heartbeats, controller mode, and faults. The map shows the whole network at a glance, the pie shows the Econolite / McCain vendor split, and the fault table plus per-cabinet drill-downs take an operator from \"which state DOT has a problem\" to \"which controller\" without leaving the page."
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "One cluster marker per state (GA/NC/SC), aggregated from all 99 cabinets in vikasa_federation.cabinets (not scoped to the $dot selector). Marker is positioned at the state's cabinet centroid, labeled with its cabinet count, and colored by that state's worst (max) heartbeat freshness. Freshness is computed from the UNION of the 3 per-DOT heartbeats tables (vikasa_gdot/ncdot/scdot) since vikasa_federation.heartbeats only carries the 3 corridor cabinets' events (DMZ shares corridor data only) \u2014 the union covers all 99 cabinets' real freshness.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 45
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cabinets"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "cabinets"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "worst_freshness_s"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 5
+      },
+      "id": 1,
+      "options": {
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "type": "default"
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "field": "worst_freshness_s"
+                },
+                "opacity": 0.5,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 28,
+                  "max": 32,
+                  "min": 24
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "text": {
+                  "field": "cabinets",
+                  "mode": "field"
+                },
+                "textConfig": {
+                  "fontSize": 16,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "Cabinets by state",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "coords",
+          "lat": 34.5,
+          "lon": -82.6,
+          "zoom": 6
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT c.dot, avg(c.lat) AS lat, avg(c.lon) AS lon, count() AS cabinets, max(h.freshness_s) AS worst_freshness_s FROM vikasa_federation.cabinets c LEFT JOIN (SELECT dot, cabinet_id, dateDiff('second', max(ingested_at), now64(3)) AS freshness_s FROM (SELECT dot, cabinet_id, ingested_at FROM vikasa_gdot.heartbeats WHERE ce_time > now() - INTERVAL 15 MINUTE UNION ALL SELECT dot, cabinet_id, ingested_at FROM vikasa_ncdot.heartbeats WHERE ce_time > now() - INTERVAL 15 MINUTE UNION ALL SELECT dot, cabinet_id, ingested_at FROM vikasa_scdot.heartbeats WHERE ce_time > now() - INTERVAL 15 MINUTE) GROUP BY dot, cabinet_id) h ON c.dot = h.dot AND c.cabinet_id = h.cabinet_id GROUP BY c.dot",
+          "refId": "A"
+        }
+      ],
+      "title": "Fleet map \u2014 the network (3 states \u00d7 33 cabinets)",
+      "type": "geomap"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Fleet composition by vendor across all 99 cabinets / 3 DOTs, from the federation cabinets dimension table (not derived via LIKE on free-text fields).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 5
+      },
+      "id": 2,
+      "options": {
+        "displayLabels": [],
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT CASE WHEN vendor = 'econolite' THEN 'Econolite ASC3' ELSE 'McCain MaxTime' END AS vendor, count() FROM vikasa_federation.cabinets GROUP BY vendor",
+          "refId": "A"
+        }
+      ],
+      "title": "Fleet by vendor",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Currently-active controller and DMS faults in the last 24h across all 99 cabinets in all 3 DOTs, grouped by (dot, cabinet, device, fault) \u2014 not just cabinet \u2014 so distinct faults don't collapse into one row. Reads the UNION of vikasa_gdot/ncdot/scdot event tables (not vikasa_federation, which only carries the 3 corridor cabinets) so a fault on ANY of the 99 cabinets appears here, not just corridor ones. Empty is expected at baseline \u2014 populates once a fault scenario is injected.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT dot, cabinet_id, device_id, fault_id, argMax(raised, ce_time) AS active, max(ce_time) AS last_seen FROM (SELECT dot, cabinet_id, device_id, fault_id, raised, ce_time FROM vikasa_gdot.controller_fault_event WHERE ce_time > now() - INTERVAL 24 HOUR UNION ALL SELECT dot, cabinet_id, device_id, fault_id, raised, ce_time FROM vikasa_ncdot.controller_fault_event WHERE ce_time > now() - INTERVAL 24 HOUR UNION ALL SELECT dot, cabinet_id, device_id, fault_id, raised, ce_time FROM vikasa_scdot.controller_fault_event WHERE ce_time > now() - INTERVAL 24 HOUR) GROUP BY dot, cabinet_id, device_id, fault_id HAVING active = 1",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT dot, cabinet_id, device_id, fault_id, argMax(event_kind, ce_time) AS active, max(ce_time) AS last_seen FROM (SELECT dot, cabinet_id, device_id, fault_id, event_kind, ce_time FROM vikasa_gdot.dms_event WHERE ce_time > now() - INTERVAL 24 HOUR AND event_kind IN ('fault-raised', 'fault-cleared') UNION ALL SELECT dot, cabinet_id, device_id, fault_id, event_kind, ce_time FROM vikasa_ncdot.dms_event WHERE ce_time > now() - INTERVAL 24 HOUR AND event_kind IN ('fault-raised', 'fault-cleared') UNION ALL SELECT dot, cabinet_id, device_id, fault_id, event_kind, ce_time FROM vikasa_scdot.dms_event WHERE ce_time > now() - INTERVAL 24 HOUR AND event_kind IN ('fault-raised', 'fault-cleared')) GROUP BY dot, cabinet_id, device_id, fault_id HAVING active = 'fault-raised'",
+          "refId": "B"
+        }
+      ],
+      "title": "Active faults (controller + DMS)",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Distinct cabinets emitting heartbeats per minute in the selected DOT's network. A flat line at ~33 means the whole network is alive; a dip means cabinets went dark. Per-DOT via $dot \u2014 the fleet map above is the all-99 view.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT toStartOfMinute(ce_time) AS time, count(DISTINCT cabinet_id) AS cabinets FROM vikasa_${dot}.heartbeats WHERE $__timeFilter(ce_time) GROUP BY time ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Cabinets reporting over time ($dot)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Events per minute across the selected DOT's whole network (all ~33 cabinets), stacked by service \u2014 signal-control, traffic-sensor, perception, dms. The network's live activity composition, not one cabinet.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT bucket AS time, service, sum(n) AS events FROM vikasa_${dot}.events_1m WHERE $__timeFilter(bucket) GROUP BY bucket, service ORDER BY bucket",
+          "refId": "A"
+        }
+      ],
+      "title": "Network throughput by service ($dot)",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "vikasa",
+    "fleet-health"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "gdot",
+          "value": "gdot"
+        },
+        "description": "Scopes only the two per-DOT network panels below (cabinets reporting, throughput by service). The fleet map and Active faults table are always fleet-wide (all 99 cabinets, all 3 DOTs) and ignore this selector.",
+        "hide": 0,
+        "includeAll": false,
+        "label": "DOT",
+        "multi": false,
+        "name": "dot",
+        "options": [
+          {
+            "selected": true,
+            "text": "gdot",
+            "value": "gdot"
+          },
+          {
+            "selected": false,
+            "text": "ncdot",
+            "value": "ncdot"
+          },
+          {
+            "selected": false,
+            "text": "scdot",
+            "value": "scdot"
+          }
+        ],
+        "query": "gdot,ncdot,scdot",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "refresh": "10s",
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Fleet Health",
+  "uid": "vikasa-fleet-health",
+  "version": 1,
+  "weekStart": ""
+}

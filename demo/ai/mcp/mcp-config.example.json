@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "grafana": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GRAFANA_URL",
+        "-e", "GRAFANA_SERVICE_ACCOUNT_TOKEN",
+        "grafana/mcp-grafana", "-t", "stdio"
+      ],
+      "env": {
+        "GRAFANA_URL": "http://host.docker.internal:3000",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "<GRAFANA_API_KEY from `democtl ai-setup`>"
+      }
+    },
+    "clickhouse": {
+      "command": "uv",
+      "args": [
+        "run", "--with", "mcp-clickhouse", "--python", "3.10", "mcp-clickhouse"
+      ],
+      "env": {
+        "CLICKHOUSE_HOST": "localhost",
+        "CLICKHOUSE_PORT": "8123",
+        "CLICKHOUSE_USER": "ai_readonly",
+        "CLICKHOUSE_PASSWORD": "vikasa-ai",
+        "CLICKHOUSE_SECURE": "false",
+        "CLICKHOUSE_VERIFY": "true"
+      }
+    }
+  }
+}

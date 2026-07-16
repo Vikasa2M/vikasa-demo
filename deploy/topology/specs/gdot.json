@@ -1,0 +1,16 @@
+{
+  "vikasa-infra-topology:topology": {
+    "dot": "gdot",
+    "cluster": [
+      { "id": "d1a",  "js-domain": "d1a",  "leaf-endpoint": "gdot-regional:7422", "substrate": { "type": "bare-metal", "hosts": ["gdot-regional"] } },
+      { "id": "core", "js-domain": "core", "leaf-endpoint": "gdot-central:7422",  "substrate": { "type": "bare-metal", "hosts": ["gdot-central"] } },
+      { "id": "dmz",  "js-domain": "dmz",  "leaf-endpoint": "gdot-dmz:7422",      "substrate": { "type": "bare-metal", "hosts": ["gdot-dmz"] } }
+    ],
+    "district": [ { "id": "d1", "partition": [ { "id": "d1/0", "cluster": "d1a" } ] } ],
+    "central": { "cluster": "core", "replicas": 1 },
+    "dmz": {
+      "cluster": "dmz", "replicas": 1,
+      "shares": [ { "consumer": "federation", "from": "vikasa.gdot.d1.cab-i85-001.>", "as": "vikasa.gdot.share.i85.cab-i85-001.>" } ]
+    }
+  }
+}
