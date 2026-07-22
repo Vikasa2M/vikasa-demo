@@ -1,0 +1,1008 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 8,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## MARDOT I-85 corridor \u2014 camera + lidar fused, station by station.\n\nThe ten perception stations strung along I-85 through metro Atlanta (Gwinnett \u2192 downtown \u2192 Newnan). Each cabinet runs two cameras and a lidar; their per-zone counts are reconciled into a single fusion agreement ratio and class mix. The map and station strip show the whole corridor at a glance; the fusion, queue, incident, and per-lane panels below drill into the stations you pick. All SAE J2735-style perception events, vendor-neutral, joined only after they land in ClickHouse."
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "The ten I-85 corridor stations, positioned along the route. Marker size = detections in the last 15 min; color = live incidents (green = clear, red = an unresolved incident here). A cabinet turns red the moment its perception stack flags a stopped vehicle on the corridor.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "active_incidents"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "live incidents"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "detections"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "detections (15m)"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 5
+      },
+      "id": 9,
+      "options": {
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "type": "default"
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "field": "active_incidents"
+                },
+                "opacity": 0.55,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "field": "detections",
+                  "fixed": 6,
+                  "max": 16,
+                  "min": 6
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "text": {
+                  "field": "cabinet_id",
+                  "mode": "field"
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "Perception by cabinet",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "coords",
+          "lat": 33.72,
+          "lon": -84.4,
+          "zoom": 9
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT c.cabinet_id, c.lat, c.lon, coalesce(p.detections, 0) AS detections, coalesce(i.active_incidents, 0) AS active_incidents FROM vikasa_mardot.cabinets c LEFT JOIN (SELECT cabinet_id, sum(count) AS detections FROM vikasa_mardot.perception_zone_interval WHERE ce_time > now() - INTERVAL 15 MINUTE GROUP BY cabinet_id) p ON c.cabinet_id = p.cabinet_id LEFT JOIN (SELECT cabinet_id, countIf(latest != 'cleared') AS active_incidents FROM (SELECT cabinet_id, incident_id, argMax(state, ce_time) AS latest FROM vikasa_mardot.perception_incident GROUP BY cabinet_id, incident_id) GROUP BY cabinet_id) i ON c.cabinet_id = i.cabinet_id WHERE c.route = 'i85'",
+          "refId": "A"
+        }
+      ],
+      "title": "MARDOT I-85 corridor \u2014 perception stations (detections & live incidents)",
+      "type": "geomap"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Perception detections in the last 15 min per I-85 station, ordered NE\u2192SW along the corridor. The corridor's activity profile \u2014 busy stations vs quiet ones \u2014 at a glance.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 85,
+            "lineWidth": 1,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 5
+      },
+      "id": 10,
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT c.cabinet_id AS station, sum(p.count) AS detections FROM vikasa_mardot.perception_zone_interval p INNER JOIN vikasa_mardot.cabinets c ON p.cabinet_id = c.cabinet_id WHERE c.route = 'i85' AND p.ce_time > now() - INTERVAL 15 MINUTE GROUP BY c.cabinet_id, c.lat ORDER BY c.lat DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Detections by station along I-85 (NE \u2192 SW)",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Camera lane volume vs. lidar zone count, same time buckets \u2014 visual agreement between the two sensor modalities is the point.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "camera"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "lidar"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 15
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT toStartOfInterval(ce_time, INTERVAL 1 MINUTE) AS time, sum(volume) AS camera FROM vikasa_mardot.traffic_sensor_lane_interval WHERE $__timeFilter(ce_time) AND cabinet_id IN ($cabinet) GROUP BY time ORDER BY time",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT toStartOfInterval(ce_time, INTERVAL 1 MINUTE) AS time, sum(count) AS lidar FROM vikasa_mardot.perception_zone_interval WHERE $__timeFilter(ce_time) AND cabinet_id IN ($cabinet) GROUP BY time ORDER BY time",
+          "refId": "B"
+        }
+      ],
+      "title": "Camera vs lidar counts",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "lidar zone count vs. average per-camera lane volume (camera total \u00f7 distinct camera device count) over the dashboard time range \u2014 normalizes for 2 cameras vs. 1 lidar per cabinet so both modalities measure comparable per-sensor volume. Green band 0.7\u20131.3 is expected sensor agreement; amber is borderline; red is disagreement.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "green",
+                "value": 0.7
+              },
+              {
+                "color": "orange",
+                "value": 1.3
+              },
+              {
+                "color": "red",
+                "value": 1.6
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 15
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT (SELECT sum(count) FROM vikasa_mardot.perception_zone_interval WHERE $__timeFilter(ce_time) AND cabinet_id IN ($cabinet)) / nullIf((SELECT sum(volume) FROM vikasa_mardot.traffic_sensor_lane_interval WHERE $__timeFilter(ce_time) AND cabinet_id IN ($cabinet)) / nullIf((SELECT uniqExact(device_id) FROM vikasa_mardot.traffic_sensor_lane_interval WHERE $__timeFilter(ce_time) AND cabinet_id IN ($cabinet)), 0), 0) AS ratio",
+          "refId": "A"
+        }
+      ],
+      "title": "Fusion agreement ratio",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Lidar zone counts by vehicle class, stacked, over time.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT toStartOfInterval(ce_time, INTERVAL 5 MINUTE) AS time, vehicle_class, sum(count) AS count FROM vikasa_mardot.perception_zone_interval WHERE $__timeFilter(ce_time) AND cabinet_id IN ($cabinet) GROUP BY time, vehicle_class ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Zone class mix",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Latest queue state per zone (argMax over queue_state). Empty is expected at baseline \u2014 populates once a congestion/queue scenario is injected.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 31
+      },
+      "id": 4,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, zone_id, argMax(queued, ce_time) AS queued, argMax(queue_length_m, ce_time) AS queue_length_m, max(ce_time) AS last FROM vikasa_mardot.queue_state WHERE ce_time > now() - INTERVAL 1 HOUR AND cabinet_id IN ($cabinet) GROUP BY cabinet_id, zone_id ORDER BY cabinet_id, zone_id",
+          "refId": "A"
+        }
+      ],
+      "title": "Queues",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Latest state per incident (argMax over perception_incident). Empty is expected at baseline \u2014 populates once an incident scenario is injected.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 31
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, incident_id, argMax(incident_type, ce_time) AS incident_type, argMax(state, ce_time) AS state, max(ce_time) AS last FROM vikasa_mardot.perception_incident WHERE ce_time > now() - INTERVAL 6 HOUR AND cabinet_id IN ($cabinet) GROUP BY cabinet_id, incident_id ORDER BY last DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Incident feed",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Latest operational status per camera sensor (argMax over traffic_sensor_status).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "OPERATIONAL_STATUS_ACTIVE": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 0,
+        "y": 39
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, device_id, argMax(status, ce_time) AS status, max(ce_time) AS last_seen FROM vikasa_mardot.traffic_sensor_status WHERE ce_time > now64(3) - INTERVAL 15 MINUTE AND cabinet_id IN ($cabinet) GROUP BY cabinet_id, device_id ORDER BY cabinet_id, device_id",
+          "refId": "A"
+        }
+      ],
+      "title": "Sensor health",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Latest completed interval per lane (argMax over traffic_sensor_lane_interval). Speed is colour-coded by congestion (red = slow).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "speed_kmh"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "velocitykmh"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 30
+                    },
+                    {
+                      "color": "green",
+                      "value": 50
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "occupancy"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "density"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 14,
+        "x": 10,
+        "y": 39
+      },
+      "id": 7,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, device_id, lane_id, argMax(speed_kmh, ce_time) AS speed_kmh, argMax(volume, ce_time) AS volume, argMax(occupancy, ce_time) AS occupancy, argMax(density, ce_time) AS density, max(ce_time) AS last FROM vikasa_mardot.traffic_sensor_lane_interval WHERE ce_time > now64(3) - INTERVAL 15 MINUTE AND cabinet_id IN ($cabinet) GROUP BY cabinet_id, device_id, lane_id ORDER BY cabinet_id, device_id, lane_id",
+          "refId": "A"
+        }
+      ],
+      "title": "Per-lane interval matrix",
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "vikasa",
+    "perception",
+    "fusion"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "clickhouse-vikasa"
+        },
+        "definition": "SELECT cabinet_id FROM vikasa_mardot.cabinets WHERE route = 'i85' ORDER BY cabinet_id",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Cabinet",
+        "multi": true,
+        "name": "cabinet",
+        "options": [],
+        "query": {
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id FROM vikasa_mardot.cabinets WHERE route = 'i85' ORDER BY cabinet_id",
+          "refId": "PerceptionFusion-cabinet-Variable"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "refresh": "10s",
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Perception & Fusion",
+  "uid": "vikasa-perception-fusion",
+  "version": 1,
+  "weekStart": ""
+}

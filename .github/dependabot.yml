@@ -1,0 +1,32 @@
+# Dependabot configuration.
+# Weekly checks with a 14-day cooldown on every update, so a freshly published
+# release has to age two weeks before Dependabot opens a PR for it.
+version: 2
+updates:
+  # Go modules (go.mod / go.sum). Note: this repo commits vendor/ and CI builds
+  # with -mod=vendor, so a Dependabot go PR must be re-vendored (`go mod vendor`)
+  # before it will pass CI.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+
+  # Python. No dependency manifest exists yet (tools/genfleet.py is stdlib-only),
+  # so this is inactive until a requirements.txt / pyproject.toml is added.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 14
+
+  # GitHub Actions used in .github/workflows/.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 14

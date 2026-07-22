@@ -1,0 +1,273 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "panels": [],
+      "title": "Vendor independence",
+      "type": "row"
+    },
+    {
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 1 },
+      "id": 2,
+      "options": {
+        "mode": "markdown",
+        "content": "## NTCIP 1202 · One standard, any vendor.\n\nVikasa speaks NTCIP 1202 natively. Econolite ASC3 and McCain MaxTime controllers plug in over the same protocol, publish to the same JetStream streams, and land in the same ClickHouse schema. The analytics layer is vendor-blind — same queries, same dashboards, same SLAs — regardless of who built the cabinet."
+      },
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 3,
+      "panels": [],
+      "title": "Cabinets by vendor",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse-vikasa" },
+      "description": "Count of cabinets on Econolite ASC3 controllers, from vikasa_federation.cabinets (all 99 cabinets across all 3 DOTs).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#3b82f6" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 10,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 72 },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse-vikasa" },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT count() AS value FROM vikasa_federation.cabinets WHERE vendor = 'econolite'",
+          "refId": "A"
+        }
+      ],
+      "title": "Econolite ASC3 cabinets",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse-vikasa" },
+      "description": "Count of cabinets on McCain MaxTime controllers, from vikasa_federation.cabinets (all 99 cabinets across all 3 DOTs).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#f59e0b" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 11,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 72 },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse-vikasa" },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT count() AS value FROM vikasa_federation.cabinets WHERE vendor = 'mccain'",
+          "refId": "A"
+        }
+      ],
+      "title": "McCain MaxTime cabinets",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 20,
+      "panels": [],
+      "title": "Events by vendor",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse-vikasa" },
+      "description": "Phase-state-change events per minute, split by controller vendor. Unions the 3 per-DOT databases (vikasa_mardot/veldot/sabdot), each joined cabinet_id -> vendor against that DOT's own cabinets dimension table. Both lines track the same shape — same NTCIP 1202 event, same schema, indistinguishable downstream regardless of vendor.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 80 }]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": ".*Econolite.*" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3b82f6" } }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": ".*McCain.*" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#f59e0b" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 15 },
+      "id": 21,
+      "options": {
+        "legend": { "calcs": ["mean", "sum"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse-vikasa" },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT time, vendor, sum(cnt) AS events_per_min FROM (\n  SELECT toStartOfMinute(p.ce_time) AS time, CASE WHEN c.vendor = 'econolite' THEN 'Econolite ASC3' ELSE 'McCain MaxTime' END AS vendor, count() AS cnt\n  FROM vikasa_mardot.phase_state_change AS p INNER JOIN vikasa_mardot.cabinets AS c ON p.cabinet_id = c.cabinet_id\n  WHERE $__timeFilter(p.ce_time) GROUP BY time, vendor\n  UNION ALL\n  SELECT toStartOfMinute(p.ce_time) AS time, CASE WHEN c.vendor = 'econolite' THEN 'Econolite ASC3' ELSE 'McCain MaxTime' END AS vendor, count() AS cnt\n  FROM vikasa_veldot.phase_state_change AS p INNER JOIN vikasa_veldot.cabinets AS c ON p.cabinet_id = c.cabinet_id\n  WHERE $__timeFilter(p.ce_time) GROUP BY time, vendor\n  UNION ALL\n  SELECT toStartOfMinute(p.ce_time) AS time, CASE WHEN c.vendor = 'econolite' THEN 'Econolite ASC3' ELSE 'McCain MaxTime' END AS vendor, count() AS cnt\n  FROM vikasa_sabdot.phase_state_change AS p INNER JOIN vikasa_sabdot.cabinets AS c ON p.cabinet_id = c.cabinet_id\n  WHERE $__timeFilter(p.ce_time) GROUP BY time, vendor\n) GROUP BY time, vendor ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Phase-state-change events / min by vendor",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 30,
+      "panels": [],
+      "title": "Side-by-side: same event types",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse-vikasa" },
+      "description": "Event volume per vendor across the four NTCIP-1202-derived service types (last 1h), unioned across the 3 per-DOT databases and joined cabinet_id -> vendor. Same event types decoded from both Econolite ASC3 and McCain MaxTime controllers — vendor-agnostic coverage, same schema either way.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 80, "lineWidth": 1 },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 80 }]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Econolite ASC3" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3b82f6" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "McCain MaxTime" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#f59e0b" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "id": 31,
+      "options": {
+        "orientation": "horizontal",
+        "stacking": "none",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse-vikasa" },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT service, countIf(vendor = 'econolite') AS \"Econolite ASC3\", countIf(vendor = 'mccain') AS \"McCain MaxTime\" FROM (\n  SELECT e.service AS service, c.vendor AS vendor FROM vikasa_mardot.events_raw AS e INNER JOIN vikasa_mardot.cabinets AS c ON e.cabinet_id = c.cabinet_id WHERE e.ce_time > now() - INTERVAL 1 HOUR AND e.service IN ('signal-control', 'traffic-sensor', 'perception', 'dms')\n  UNION ALL\n  SELECT e.service AS service, c.vendor AS vendor FROM vikasa_veldot.events_raw AS e INNER JOIN vikasa_veldot.cabinets AS c ON e.cabinet_id = c.cabinet_id WHERE e.ce_time > now() - INTERVAL 1 HOUR AND e.service IN ('signal-control', 'traffic-sensor', 'perception', 'dms')\n  UNION ALL\n  SELECT e.service AS service, c.vendor AS vendor FROM vikasa_sabdot.events_raw AS e INNER JOIN vikasa_sabdot.cabinets AS c ON e.cabinet_id = c.cabinet_id WHERE e.ce_time > now() - INTERVAL 1 HOUR AND e.service IN ('signal-control', 'traffic-sensor', 'perception', 'dms')\n) GROUP BY service ORDER BY service",
+          "refId": "A"
+        }
+      ],
+      "title": "Event coverage by vendor (last 1h)",
+      "type": "barchart"
+    },
+    {
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 32 },
+      "id": 40,
+      "options": {
+        "mode": "markdown",
+        "content": "**Open standards: NTCIP 1202 · SAE J2735 · ARC-IT physical objects · ATSPM-derived analytics.** No vendor-specific protocol. No translation shims. No vendor lock-in."
+      },
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["vikasa", "exec", "vendor", "ntcip"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "refresh": "10s",
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Executive · Multi-Vendor / Open Standards",
+  "uid": "vikasa-exec-multi-vendor",
+  "version": 1,
+  "weekStart": ""
+}

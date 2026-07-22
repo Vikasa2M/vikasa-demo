@@ -1,0 +1,326 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 4,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## NTCIP 1203 dynamic message signs \u2014 live state and fault history.\n\nEach cabinet's DMS reports its active message mode (normal, advisory, incident) and any faults over the same NATS pipeline as every other device. There is no sign-specific protocol path: the latest-mode table, active-fault table, and mode-change timeline all read from standard status events after they land in ClickHouse."
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Latest operating mode per DMS sign (argMax(mode, ce_time) over dms_event, event_kind='mode-changed'). Status board only \u2014 openits-models has no DMS message-posted event.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, device_id, argMax(mode, ce_time) AS mode, max(ce_time) AS last FROM vikasa_${dot}.dms_event WHERE event_kind = 'mode-changed' AND ce_time > now() - INTERVAL 24 HOUR GROUP BY cabinet_id, device_id ORDER BY cabinet_id, device_id",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest mode per sign",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "DMS signs whose latest fault event is 'fault-raised' (argMax over event_kind IN ('fault-raised','fault-cleared'), grouped by cabinet+device+fault so distinct faults don't collapse). Empty is expected at baseline \u2014 populates once a DMS fault scenario is injected.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, device_id, fault_id, argMax(event_kind, ce_time) AS latest, max(ce_time) AS last FROM vikasa_${dot}.dms_event WHERE event_kind IN ('fault-raised', 'fault-cleared') AND ce_time > now() - INTERVAL 24 HOUR GROUP BY cabinet_id, device_id, fault_id HAVING latest = 'fault-raised' ORDER BY last DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Active DMS faults",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Mode-change events per minute across the DOT's ~33 DMS signs, by target mode. Advisory/incident spikes show the network responding to congestion or events; flat 'normal' is the quiet baseline. A network-activity view, not a per-sign timeline.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "axisPlacement": "auto",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT toStartOfMinute(ce_time) AS time, mode, count() AS changes FROM vikasa_${dot}.dms_event WHERE event_kind = 'mode-changed' AND $__timeFilter(ce_time) GROUP BY time, mode ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "cabinet_id"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "mode (.*)",
+            "renamePattern": "$1"
+          }
+        }
+      ],
+      "title": "DMS mode-change activity by mode ($dot)",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "vikasa",
+    "dms"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "mardot",
+          "value": "mardot"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "DOT",
+        "multi": false,
+        "name": "dot",
+        "options": [
+          {
+            "selected": true,
+            "text": "mardot",
+            "value": "mardot"
+          },
+          {
+            "selected": false,
+            "text": "veldot",
+            "value": "veldot"
+          },
+          {
+            "selected": false,
+            "text": "sabdot",
+            "value": "sabdot"
+          }
+        ],
+        "query": "mardot,veldot,sabdot",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "refresh": "10s",
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "DMS Status",
+  "uid": "vikasa-dms-status",
+  "version": 1,
+  "weekStart": ""
+}

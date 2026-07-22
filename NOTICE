@@ -1,0 +1,15 @@
+openits-demo
+Copyright 2026 OpenITS Working Group
+
+This product includes software developed by the OpenITS Working Group.
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file
+for the full license text.
+
+This repository vendors, under vendor/, portions of
+github.com/Vikasa2M/openits-models (Apache-2.0) along with its transitive
+third-party dependencies, each of which retains its own upstream license and
+copyright notice in place.
+
+The topology renderer github.com/Vikasa2M/vikasa-infra (Apache-2.0) is fetched
+as a pinned module by `make topology` and is not redistributed here.

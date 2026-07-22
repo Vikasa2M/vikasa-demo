@@ -1,0 +1,555 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## I-75 South Metro Express Lanes \u2014 scheduled reversible operation.\n\nMARDOT's barrier-separated reversible express lanes south of Atlanta flip direction on a daily schedule: open **northbound** for the AM inbound peak, **southbound** for the PM outbound peak, with an IN-TRANSITION barrier sweep between. The controller (cab-i75s-01) publishes each state change as a standard `LaneStateChanged` event over the same NATS pipeline as every other device \u2014 no lane-control-specific path. *(Schedule compressed here so a full reversal is visible during a short take.)*"
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "The direction the reversible lanes are currently open to, from the latest LaneStateChanged. Blue = northbound (AM inbound to Atlanta), orange = southbound (PM outbound), yellow = mid-reversal barrier sweep.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "\u25b2  Open Northbound \u00b7 inbound to Atlanta",
+                  "color": "blue",
+                  "index": 0
+                },
+                "1": {
+                  "text": "\u25bc  Open Southbound \u00b7 outbound from Atlanta",
+                  "color": "orange",
+                  "index": 1
+                },
+                "2": {
+                  "text": "\u27f3  In transition \u00b7 barrier sweep",
+                  "color": "yellow",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 16,
+        "x": 0,
+        "y": 4
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT CASE WHEN argMax(flow_state, ce_time) = 'LANE_FLOW_STATE_IN_TRANSITION' THEN 2 WHEN argMax(open_direction, ce_time) = 'TRAVEL_DIRECTION_NORTHBOUND' THEN 0 ELSE 1 END AS direction FROM vikasa_mardot.reversible_lane_state",
+          "refId": "A"
+        }
+      ],
+      "title": "Current open direction",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "The reversible segment's current flow state: OPEN (carrying traffic in the open direction) or IN TRANSITION (closed to both while the barrier sweeps).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "OPEN",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "IN TRANSITION",
+                  "color": "yellow",
+                  "index": 1
+                },
+                "2": {
+                  "text": "CLOSED",
+                  "color": "red",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 4
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT CASE WHEN argMax(flow_state, ce_time) = 'LANE_FLOW_STATE_OPEN' THEN 0 WHEN argMax(flow_state, ce_time) = 'LANE_FLOW_STATE_IN_TRANSITION' THEN 1 ELSE 2 END AS flow_state FROM vikasa_mardot.reversible_lane_state",
+          "refId": "A"
+        }
+      ],
+      "title": "Flow state",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "The reversible segment's open direction over time (and the IN-TRANSITION barrier sweeps between). This is the reversal schedule made visible \u2014 each band is one open phase.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "Northbound (inbound)": {
+                  "color": "blue",
+                  "index": 0
+                },
+                "Southbound (outbound)": {
+                  "color": "orange",
+                  "index": 1
+                },
+                "Transition": {
+                  "color": "yellow",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 4,
+      "options": {
+        "alignValue": "center",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "rowHeight": 0.9,
+        "showValue": "auto",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT ce_time AS time, CASE WHEN flow_state = 'LANE_FLOW_STATE_IN_TRANSITION' THEN 'Transition' WHEN open_direction = 'TRAVEL_DIRECTION_NORTHBOUND' THEN 'Northbound (inbound)' ELSE 'Southbound (outbound)' END AS direction FROM vikasa_mardot.reversible_lane_state WHERE $__timeFilter(ce_time) ORDER BY ce_time",
+          "refId": "A"
+        }
+      ],
+      "title": "Reversal schedule \u2014 open direction over time",
+      "type": "state-timeline"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Each scheduled reversal: when the lanes reopened in a new direction, from which direction, and why (the schedule reason). Keepalive re-reports are excluded \u2014 only real openings.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT ce_time AS time, CASE WHEN previous_direction = 'TRAVEL_DIRECTION_NORTHBOUND' THEN 'Northbound' WHEN previous_direction = 'TRAVEL_DIRECTION_SOUTHBOUND' THEN 'Southbound' ELSE '\u2014' END AS from_direction, CASE WHEN open_direction = 'TRAVEL_DIRECTION_NORTHBOUND' THEN 'Northbound' ELSE 'Southbound' END AS to_direction, initiated_by FROM vikasa_mardot.reversible_lane_state WHERE $__timeFilter(ce_time) AND initiated_by != 'schedule-keepalive' AND flow_state = 'LANE_FLOW_STATE_OPEN' ORDER BY ce_time DESC LIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Reversal events",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Vehicle volume per minute across the whole I-75 South express-lane segment (all 5 route=i75s stations). The scheduled reversal opens toward the historical peak direction \u2014 this is the demand it serves.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "lineWidth": 1,
+            "axisPlacement": "auto",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT toStartOfMinute(p.ce_time) AS time, sum(p.volume) AS vehicles FROM vikasa_mardot.traffic_sensor_lane_interval p INNER JOIN vikasa_mardot.cabinets c ON p.cabinet_id = c.cabinet_id WHERE c.route = 'i75s' AND $__timeFilter(p.ce_time) GROUP BY time ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Corridor demand at the segment (veh/min)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "The I-75 South express-lane segment (Stockbridge \u2192 McDonough) and its 5 stations. Every marker is colored by the segment's CURRENT open direction \u2014 blue northbound (inbound), orange southbound (outbound), yellow mid-reversal \u2014 so the whole segment flips color together when the schedule reverses.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Northbound (inbound)",
+                  "color": "blue",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Southbound (outbound)",
+                  "color": "orange",
+                  "index": 1
+                },
+                "2": {
+                  "text": "In transition",
+                  "color": "yellow",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 7,
+      "options": {
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "type": "default"
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "field": "direction"
+                },
+                "opacity": 0.7,
+                "size": {
+                  "fixed": 12
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "text": {
+                  "field": "cabinet_id",
+                  "mode": "field"
+                },
+                "textConfig": {
+                  "fontSize": 11,
+                  "offsetX": 0,
+                  "offsetY": -14,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "I-75 South stations",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "coords",
+          "lat": 33.525,
+          "lon": -84.305,
+          "zoom": 11
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT c.cabinet_id, c.lat, c.lon, (SELECT CASE WHEN argMax(flow_state, ce_time) = 'LANE_FLOW_STATE_IN_TRANSITION' THEN 2 WHEN argMax(open_direction, ce_time) = 'TRAVEL_DIRECTION_NORTHBOUND' THEN 0 ELSE 1 END FROM vikasa_mardot.reversible_lane_state) AS direction FROM vikasa_mardot.cabinets c WHERE c.route = 'i75s' ORDER BY c.lat DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "I-75 South express-lane segment \u2014 current open direction",
+      "type": "geomap"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "vikasa"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "I-75 South Reversible Express Lanes",
+  "uid": "vikasa-reversible-lanes",
+  "version": 1,
+  "weekStart": ""
+}

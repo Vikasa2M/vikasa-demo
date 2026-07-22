@@ -1,0 +1,15 @@
+<clickhouse>
+  <profiles>
+    <ai_readonly_profile>
+      <readonly>1</readonly>
+      <max_execution_time>30</max_execution_time>
+    </ai_readonly_profile>
+  </profiles>
+  <users>
+    <ai_readonly>
+      <password>vikasa-ai</password>
+      <profile>ai_readonly_profile</profile>
+      <networks><ip>::/0</ip></networks>
+    </ai_readonly>
+  </users>
+</clickhouse>

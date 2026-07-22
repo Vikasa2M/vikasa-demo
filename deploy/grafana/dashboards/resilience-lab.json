@@ -1,0 +1,429 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "During a WAN cut, watch the cut cabinet's ingest rate drop to zero (the clearest signal) while its freshness gap climbs \u2014 its edge buffer keeps capturing throughout \u2014 then on restore ingest spikes, freshness recovers, and the cumulative total catches up with zero loss.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Events/min for the cut-target cabinet (cab-i85-001) and two of its siblings (cab-002, cab-003) at similar scale. On a WAN cut the target's line drops straight to zero while the siblings keep flowing \u2014 proving the cut is targeted, not fleetwide. The other ~30 cabinets in the network keep running too (see Fleet Health).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "events/min"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT bucket AS time, cabinet_id, sum(n) AS n FROM vikasa_mardot.events_1m WHERE $__timeFilter(bucket) AND cabinet_id IN ('cab-i85-001', 'cab-002', 'cab-003') GROUP BY bucket, cabinet_id ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Ingest rate \u2014 cut target vs its siblings (drops to zero on a WAN cut)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Seconds since the last heartbeat for the cut-target cabinet (cab-i85-001) and its two siblings. On a WAN cut the target's gap climbs into yellow/red while the siblings stay green \u2014 the rest of the ~33-cabinet network is unaffected (see Fleet Health).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 45
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, dateDiff('second', max(ingested_at), now64(3)) AS freshness_s FROM vikasa_mardot.heartbeats WHERE ce_time > now() - INTERVAL 10 MINUTE AND cabinet_id IN ('cab-i85-001', 'cab-002', 'cab-003') GROUP BY cabinet_id ORDER BY cabinet_id",
+          "refId": "A"
+        }
+      ],
+      "title": "Freshness gap \u2014 cut target vs siblings (seconds since last heartbeat)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "NOT the cut-moment indicator \u2014 the VIKASA_BUFFER stream retains every message by policy, so this climbs at the same steady rate (~50 msgs/interval) whether a cabinet is connected or cut; it does not spike faster during a cut. The point: the edge NEVER STOPS CAPTURING, even while the cut cabinet's ingest rate (top panel) is zero \u2014 nothing is lost. On restore, the buffer drains upstream and the cumulative event count (below) catches up with zero loss and zero duplicates.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "label_replace(gnatsd_varz_jetstream_stats_storage{job=\"nats-cabinet\"}, \"cabinet\", \"$1 $2\", \"instance\", \"^(mardot|veldot|sabdot)-(cab-.*)-nats-exporter.*$\")",
+          "instant": false,
+          "legendFormat": "{{cabinet}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Edge buffer keeps capturing (no data lost)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Running total of events per cabinet for the cut-target (cab-i85-001) and its two siblings. On a WAN cut the target's staircase flattens (its uplink is severed) then steps back up on restore as the edge buffer drains \u2014 zero events lost, zero duplicated.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT bucket AS time, cabinet_id, sum(n) OVER (PARTITION BY cabinet_id ORDER BY bucket) AS cum FROM vikasa_mardot.events_1m WHERE $__timeFilter(bucket) AND cabinet_id IN ('cab-i85-001', 'cab-002', 'cab-003') ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Cumulative events \u2014 cut target vs siblings (zero loss)",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 5,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "**How to read this dashboard**\n\nA WAN cut severs a cabinet's uplink. Watch its **INGEST RATE** (top) drop to zero and its **FRESHNESS** climb \u2014 meanwhile the cabinet's **EDGE BUFFER** keeps capturing every message (nothing lost). On **RESTORE**, ingest spikes as the buffer drains upstream and the **CUMULATIVE** count catches up with zero loss and zero duplicates.\n\n**Baseline (now):** every cabinet is connected \u2014 ingest rate (panel 1) shows the cut-target and its two sibling lines all flowing, freshness (panel 2) stays low/green, the edge buffer (panel 3) climbs its normal gentle slope for each corridor cabinet alike, and cumulative totals (panel 4) rise together.\n\n**During a WAN cut** (`democtl cut -cabinet <id>`): the cut cabinet's ingest rate (panel 1) drops straight to zero \u2014 the clearest signal \u2014 while its freshness gap (panel 2) climbs into yellow/red. Its edge buffer (panel 3) keeps climbing at the same steady rate as always \u2014 that's by design, the edge never stops capturing. Its cumulative total (panel 4) flattens.\n\n**On restore** (`democtl restore -cabinet <id>`): ingest (panel 1) spikes as the drained buffer's backlog lands, freshness (panel 2) drops back to green, and the cumulative staircase (panel 4) steps up to cover what was buffered \u2014 **zero events lost, zero duplicated**.",
+        "mode": "markdown"
+      },
+      "title": "About this dashboard",
+      "type": "text"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "vikasa",
+    "resilience-lab"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "refresh": "10s",
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Resilience Lab",
+  "uid": "vikasa-resilience-lab",
+  "version": 1,
+  "weekStart": ""
+}

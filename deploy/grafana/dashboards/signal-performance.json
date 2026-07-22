@@ -1,0 +1,658 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "ATSPM-style signal-performance analytics derived from live event tables (phase_state_change, detector_transition) via ClickHouse window functions, tDigest percentiles, and sequence math. Purdue phase-termination breakdown, split-failure detection, green-duration percentiles, cycle length, detector occupancy, and vendor cohort comparison.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 9,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## ATSPM-derived signal analytics, computed from raw controller events.\n\nEvery phase termination, detector activation, and green interval streams off the ASCs as high-resolution events. From that raw feed the pipeline derives the classic ATSPM measures \u2014 Purdue phase-termination diagrams, split-failure detection, green-duration percentiles, and a cross-vendor cohort comparison \u2014 with no vendor's proprietary ATSPM module in the loop."
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Per phase, share of YELLOW-onset terminations (the moment termination_reason is meaningful) that were MAX_OUT vs GAP_OUT. Heavy MAX_OUT in a phase signals undersized split timing. Note: stacking is 'normal' not 'percent' intentionally \u2014 percent-stacking mis-scales the percent-unit axis in this plugin.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "axisLabel": "share of terminations (%)",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "id": 1,
+      "options": {
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT concat('phase ', toString(phase_number)) AS phase, round(countIf(termination_reason='TERMINATION_REASON_GAP_OUT')*100.0/nullIf(countIf(termination_reason IN ('TERMINATION_REASON_MAX_OUT','TERMINATION_REASON_GAP_OUT')),0),1) AS gap_out_pct, round(countIf(termination_reason='TERMINATION_REASON_MAX_OUT')*100.0/nullIf(countIf(termination_reason IN ('TERMINATION_REASON_MAX_OUT','TERMINATION_REASON_GAP_OUT')),0),1) AS max_out_pct FROM vikasa_${dot}.phase_state_change WHERE $__timeFilter(ce_time) AND to_state='TO_STATE_YELLOW' AND cabinet_id IN ($cabinet) GROUP BY phase_number ORDER BY phase_number",
+          "refId": "A"
+        }
+      ],
+      "title": "Purdue phase-termination matrix",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Top-15 cabinet x phase combinations by MAX_OUT% share, ranked worst-first, among those with >=5 YELLOW terminations in the window (statistical-significance gate). Real traffic engineers add demand to those phases or shorten the cycle.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max_out_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 15
+                    },
+                    {
+                      "color": "red",
+                      "value": 22
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, phase_number AS phase, countIf(termination_reason='TERMINATION_REASON_MAX_OUT') AS max_outs, countIf(termination_reason IN ('TERMINATION_REASON_MAX_OUT','TERMINATION_REASON_GAP_OUT')) AS terminations, round(countIf(termination_reason='TERMINATION_REASON_MAX_OUT')*100.0/nullIf(countIf(termination_reason IN ('TERMINATION_REASON_MAX_OUT','TERMINATION_REASON_GAP_OUT')),0),1) AS max_out_pct FROM vikasa_${dot}.phase_state_change WHERE $__timeFilter(ce_time) AND to_state='TO_STATE_YELLOW' AND cabinet_id IN ($cabinet) GROUP BY cabinet_id, phase HAVING terminations >= 5 ORDER BY max_out_pct DESC LIMIT 15",
+          "refId": "A"
+        }
+      ],
+      "title": "Split-failure suspects",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Network-wide green-interval percentiles per phase, pooled across all cabinets in the $cabinet selection (defaults to the whole DOT). Consistent p50/p90 across the network means the corridor is timed uniformly; a phase with a long tail flags outlier cabinets to drill into.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "id": 3,
+      "options": {
+        "orientation": "horizontal",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT concat('phase ', toString(phase_number)) AS phase, round(quantileTDigest(0.5)(green_s), 1) AS p50_s, round(quantileTDigest(0.9)(green_s), 1) AS p90_s FROM (SELECT cabinet_id, phase_number, arrayJoin(arrayMap((t, s, tn, sn) -> (s = 'TO_STATE_GREEN' AND sn = 'TO_STATE_YELLOW' ? dateDiff('millisecond', t, tn) / 1000.0 : -1), arr_t, arr_s, arrayPushBack(arraySlice(arr_t, 2), toDateTime64(0, 3)), arrayPushBack(arraySlice(arr_s, 2), ''))) AS green_s FROM (SELECT cabinet_id, phase_number, groupArray((ce_time, to_state)) AS pairs, arraySort(x -> x.1, pairs) AS sorted, arrayMap(x -> x.1, sorted) AS arr_t, arrayMap(x -> x.2, sorted) AS arr_s FROM (SELECT cabinet_id, phase_number, ce_time, to_state FROM vikasa_${dot}.phase_state_change WHERE $__timeFilter(ce_time) AND to_state IN ('TO_STATE_GREEN','TO_STATE_YELLOW') AND cabinet_id IN ($cabinet)) GROUP BY cabinet_id, phase_number)) WHERE green_s BETWEEN 1 AND 120 GROUP BY phase_number ORDER BY phase_number",
+          "refId": "A"
+        }
+      ],
+      "title": "Green-duration percentiles (p50 / p90) by phase \u2014 network-wide",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Successive phase-2 GREEN onsets per cabinet via lagInFrame window function \u2014 a proxy for cycle length. QUALIFY bounds out startup/gap artifacts.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT cabinet_id, ce_time AS time, dateDiff('second', lagInFrame(ce_time) OVER (PARTITION BY cabinet_id ORDER BY ce_time), ce_time) AS cycle_s FROM vikasa_${dot}.phase_state_change WHERE $__timeFilter(ce_time) AND to_state='TO_STATE_GREEN' AND phase_number=2 AND cabinet_id IN ($cabinet) QUALIFY cycle_s BETWEEN 30 AND 300 ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycle length \u00b7 phase-2 GREEN onset deltas",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Mean ON-state duration per detector channel (paired ON -> next event via leadInFrame window). Approach/lane/phase_served are per-event dims but channel is used as the aggregation grain.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_on_seconds"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT cabinet_id, channel, round(avg(dur),2) AS avg_on_seconds, count() AS intervals FROM (SELECT cabinet_id, channel, transition, ce_time, dateDiff('second', ce_time, leadInFrame(ce_time) OVER (PARTITION BY cabinet_id, channel ORDER BY ce_time ASC ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)) AS dur FROM vikasa_${dot}.detector_transition WHERE $__timeFilter(ce_time) AND cabinet_id IN ($cabinet)) WHERE transition='TRANSITION_ON' AND dur > 0 AND dur < 600 GROUP BY cabinet_id, channel ORDER BY avg_on_seconds DESC LIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Detector occupancy \u00b7 avg ON seconds by channel",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "YELLOW-onset terminations per 15-minute bucket, stacked by termination_reason. A rising MAX_OUT band under steady volume signals split timing drifting undersized.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 0,
+          "queryType": "timeseries",
+          "rawSql": "SELECT toStartOfInterval(ce_time, INTERVAL 15 MINUTE) AS time, termination_reason AS reason, count() AS terminations FROM vikasa_${dot}.phase_state_change WHERE $__timeFilter(ce_time) AND to_state='TO_STATE_YELLOW' AND cabinet_id IN ($cabinet) GROUP BY time, reason ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Termination reason over time \u00b7 15-min buckets",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Detector ON activations by channel x 1-minute bucket. Banding shows the fixture's per-phase detector pulse pattern; spikes are concurrent demand.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "id": 7,
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "yAxis": {
+          "decimals": 0
+        },
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "steps": 64,
+          "reverse": false,
+          "exponent": 0.5,
+          "fill": "dark-orange"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT toStartOfMinute(ce_time) AS time, channel, count() AS activations FROM vikasa_${dot}.detector_transition WHERE $__timeFilter(ce_time) AND transition='TRANSITION_ON' AND cabinet_id IN ($cabinet) GROUP BY time, channel ORDER BY time, channel",
+          "refId": "A"
+        }
+      ],
+      "title": "Detector activations \u00b7 channel x 1-min bucket",
+      "type": "heatmap"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-vikasa"
+      },
+      "description": "Gap-out/max-out share grouped by vendor via JOIN to the cabinets dimension table (never inferred via LIKE). Drift between cohorts is a leading indicator of firmware divergence.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gap_out_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max_out_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "id": 8,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-vikasa"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT CASE WHEN c.vendor = 'econolite' THEN 'Econolite ASC3' ELSE 'McCain MaxTime' END AS vendor, count(DISTINCT p.cabinet_id) AS cabinets, count() AS phase_events, round(countIf(p.termination_reason='TERMINATION_REASON_GAP_OUT')*100.0/nullIf(countIf(p.termination_reason IN ('TERMINATION_REASON_GAP_OUT','TERMINATION_REASON_MAX_OUT')),0),1) AS gap_out_pct, round(countIf(p.termination_reason='TERMINATION_REASON_MAX_OUT')*100.0/nullIf(countIf(p.termination_reason IN ('TERMINATION_REASON_GAP_OUT','TERMINATION_REASON_MAX_OUT')),0),1) AS max_out_pct FROM vikasa_${dot}.phase_state_change p JOIN vikasa_${dot}.cabinets c ON p.cabinet_id = c.cabinet_id WHERE $__timeFilter(p.ce_time) AND p.to_state='TO_STATE_YELLOW' AND p.cabinet_id IN ($cabinet) GROUP BY vendor ORDER BY phase_events DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Vendor cohort comparison",
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "vikasa",
+    "atspm",
+    "signal-performance"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "mardot",
+          "value": "mardot"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "DOT",
+        "multi": false,
+        "name": "dot",
+        "options": [
+          {
+            "selected": true,
+            "text": "mardot",
+            "value": "mardot"
+          },
+          {
+            "selected": false,
+            "text": "veldot",
+            "value": "veldot"
+          },
+          {
+            "selected": false,
+            "text": "sabdot",
+            "value": "sabdot"
+          }
+        ],
+        "query": "mardot,veldot,sabdot",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "clickhouse-vikasa"
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Cabinet",
+        "multi": true,
+        "name": "cabinet",
+        "options": [],
+        "query": "SELECT DISTINCT cabinet_id FROM vikasa_${dot}.cabinets ORDER BY 1",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Signal Performance (ATSPM)",
+  "uid": "vikasa-signal-performance",
+  "version": 1,
+  "weekStart": ""
+}
