@@ -1,0 +1,141 @@
+name: CI
+
+# Unit tests + static checks only. This workflow deliberately never brings up
+# the docker-compose stack (no ClickHouse/Grafana/NATS containers, no
+# make demo) — the live/integration story is verified manually via
+# `make demo` + `democtl tour --verify` (see docs/RUNBOOK.md). CI's job is to
+# catch regressions in the Go code, the fleet.yaml -> gen-compose generator,
+# and the committed Grafana dashboards, fast and without any infrastructure.
+#
+# Models dependency in CI (read this before touching go.mod or vendor/):
+# go.mod has a LOCAL replace, `github.com/openits/openits-models =>
+# ../../openits-models-pinned`, pointing at a sibling checkout that only
+# exists on dev machines (see docs/MODELS-PIN.md) — it does not exist on a
+# stock GitHub Actions runner, and cloning the models repo at the pinned
+# commit on every CI run would be slower and one more thing that can drift
+# or fail on auth. Instead this repo commits `vendor/` (`go mod vendor`,
+# including the replaced module's needed packages) and CI builds/tests with
+# `-mod=vendor` (via GOFLAGS below), so CI is fully self-contained — no
+# sibling checkout, no extra clone step, no network fetch of Go modules.
+# `vendor/` must be regenerated (`go mod vendor`) and recommitted whenever
+# go.mod/go.sum changes or the models pin moves (see docs/MODELS-PIN.md's
+# deferred re-sync).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  GOTOOLCHAIN: auto
+  GOFLAGS: -mod=vendor
+
+jobs:
+  test:
+    name: go vet + go test (vendored deps)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - run: go vet ./...
+      - run: go test ./...
+
+  gen-drift:
+    name: gen-compose (fleet.yaml -> compose) stays working
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - name: run gen-compose against a scratch dir
+        run: go run ./tools/gen-compose -fleet deploy/topology/fleet.yaml -out /tmp/gc-ci
+      - name: assert 108 NATS confs (99 cabinet leaf + 3x regional/central/dmz)
+        run: |
+          count=$(find /tmp/gc-ci/nats -name '*.conf' | wc -l | tr -d ' ')
+          echo "generated $count nats confs"
+          test "$count" -eq 108
+      - name: assert sim configs generated (one per cabinet)
+        run: |
+          count=$(find /tmp/gc-ci/sims -name '*.yaml' | wc -l | tr -d ' ')
+          echo "generated $count sim configs"
+          test "$count" -eq 99
+      - name: assert generated compose file parses as YAML
+        run: |
+          cat > /tmp/gc-yamlcheck.go <<'EOF'
+          package main
+
+          import (
+          	"fmt"
+          	"os"
+
+          	"gopkg.in/yaml.v3"
+          )
+
+          func main() {
+          	b, err := os.ReadFile(os.Args[1])
+          	if err != nil {
+          		panic(err)
+          	}
+          	var v map[string]interface{}
+          	if err := yaml.Unmarshal(b, &v); err != nil {
+          		panic(err)
+          	}
+          	if len(v) == 0 {
+          		panic("parsed YAML has no top-level keys")
+          	}
+          	fmt.Printf("parsed OK, top-level keys: %d\n", len(v))
+          }
+          EOF
+          go run /tmp/gc-yamlcheck.go /tmp/gc-ci/docker-compose.generated.yml
+      # NOTE: this job intentionally does NOT diff /tmp/gc-ci against any
+      # committed output — deploy/compose/{nats,sims}/* and
+      # docker-compose.generated.yml are all gitignored generated artifacts
+      # (see the no-committed-artifacts job below), not source. This job's
+      # only job is to prove fleet.yaml -> gen-compose still runs cleanly
+      # and produces the expected shape.
+
+  dashboard-lint:
+    name: Grafana dashboard lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/lint-dashboards.sh
+
+  no-committed-artifacts:
+    name: no generated artifacts committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: assert no generated topology/compose/binary output is tracked
+        run: |
+          set -euo pipefail
+          bad=0
+
+          check() {
+            local pattern="$1"
+            local hits
+            hits="$(git ls-files "$pattern")"
+            if [ -n "$hits" ]; then
+              echo "FAIL: tracked files match gitignored pattern '$pattern':"
+              echo "$hits"
+              bad=1
+            fi
+          }
+
+          check 'deploy/topology/rendered/*'
+          check 'deploy/compose/docker-compose.generated.yml'
+          check 'deploy/compose/nats/*'
+          check 'deploy/compose/sims/*'
+          check 'deploy/topology/inventories/*'
+          check 'deploy/clickhouse/seed.generated.sql'
+          check 'deploy/prometheus/targets.generated.json'
+          check 'bin/*'
+          check '*.test'
+
+          if [ "$bad" -ne 0 ]; then
+            exit 1
+          fi
+          echo "no-committed-artifacts: clean"
