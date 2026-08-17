@@ -8,7 +8,7 @@ replace github.com/openits/openits-models => ../../openits-models-pinned
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.47.0
-	github.com/nats-io/nats-server/v2 v2.14.3
+	github.com/nats-io/nats-server/v2 v2.14.4
 	github.com/nats-io/nats.go v1.52.0
 	github.com/openits/openits-models v0.0.0
 	github.com/prometheus/client_golang v1.23.2
@@ -19,7 +19,7 @@ require (
 require (
 	github.com/ClickHouse/ch-go v0.73.0 // indirect
 	github.com/andybalholm/brotli v1.2.2 // indirect
-	github.com/antithesishq/antithesis-sdk-go v0.7.0-default-no-op // indirect
+	github.com/antithesishq/antithesis-sdk-go v0.7.2-default-no-op // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/go-faster/city v1.0.1 // indirect
