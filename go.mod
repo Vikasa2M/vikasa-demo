@@ -12,7 +12,7 @@ require (
 	github.com/nats-io/nats.go v1.52.0
 	github.com/openits/openits-models v0.0.0
 	github.com/prometheus/client_golang v1.23.2
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 )
 
